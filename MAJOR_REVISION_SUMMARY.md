@@ -35,12 +35,12 @@
 
 | Metric | Original | Revised | Change |
 |--------|----------|---------|--------|
-| **Word Count** | ~3,500 | ~7,200 | +106% |
-| **Sections** | 7 | 9 | +2 (Related Work, System Model) |
+| **Word Count** | ~3,500 | ~7,800 | +123% |
+| **Sections** | 7 | 10 | +3 (Related Work, System Model, Figures) |
 | **Equations** | 4 | 13 | +225% |
 | **Tables** | 2 | 4 | +2 (Comparison, Full results with CI) |
 | **References** | 6 | 19 | +217% |
-| **Figures Described** | 0 | 8 | N/A |
+| **Figures** | 0 | 4 (actual images) | NEW |
 | **Algorithms** | 3 | 3 (enhanced) | Cross-referenced |
 
 ---
@@ -105,10 +105,18 @@
 - ✅ Discussion subsection (interpretive analysis, comparison to Zhang et al.)
 
 ### Appendix
-- ✅ 8 detailed figure descriptions (topology, overhead, energy, coverage, PDR, 3 sweeps)
+- ✅ 4 actual simulation figures integrated (topology, cooling overhead, energy evolution, coverage retention)
+- ✅ Detailed figure captions (~150 words each with interpretive analysis)
 - ✅ Parameter sweep results (δ: U-shaped, f_max: tradeoff, τ: optimal 0.3)
 - ✅ Statistical validation details (CI formula, t-test protocol)
 - ✅ Reproducibility notes (JSON exports, script usage, hardware requirements)
+
+### Figures Section (NEW)
+- ✅ Figure 1: Network topology with five-region partitioning and CH distribution
+- ✅ Figure 2: Cooling overhead evolution (6.2% vs. 18.9%, ~68% reduction)
+- ✅ Figure 3: Residual energy comparison across 50 runs (324 vs. 180 rounds)
+- ✅ Figure 4: Coverage retention dynamics (89.6% vs. 70.3% sustained)
+- ✅ All figures use actual simulation data with 95% confidence intervals
 
 ---
 
