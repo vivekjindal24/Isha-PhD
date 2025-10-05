@@ -1,0 +1,64 @@
+% Algorithms
+\section{Algorithms}
+\begin{algorithm}[ht]
+\caption{Regional Cooling-Aware CH Selection}\label{alg:ch-selection}
+\begin{algorithmic}[1]
+\Require Region node set $R$, weights $(\alpha,\beta,\gamma,\delta)$, $D_{\max}$, $E_{\max}$, MinRest
+\Ensure Selected CH set $\mathcal{C}$
+\State $\mathcal{C} \gets \emptyset$
+\For{each node $i \in R$}
+  \If{$C_i > 0.5\,\text{MinRest}$} \State continue \EndIf
+  \State $\mathrm{Cost}_i \gets \alpha \frac{D_i}{D_{\max}} + \beta \frac{E_{\max}-RE_i}{E_{\max}} + \gamma \frac{1}{1+|\mathcal{N}_i|} + \delta \frac{C_i}{\text{MinRest}}$
+  \If{$i$ is advanced} $\mathrm{Cost}_i \gets \mathrm{Cost}_i \times (1-\epsilon)$ \Comment{$\epsilon$ small bonus}
+  \EndIf
+\EndFor
+\State Select node $j=\arg\min_i \mathrm{Cost}_i$; $\mathcal{C} \gets \mathcal{C} \cup \{j\}$
+\State Optionally iterate greedy addition if multi-CH per region
+\State \Return $\mathcal{C}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[ht]
+\caption{Cooling-Aware Routing (Modified Dijkstra)}\label{alg:routing}
+\begin{algorithmic}[1]
+\Require Graph $G=(V,E)$, source $s$, sink $t$, penalty parameters $\lambda_{cool}, \lambda_{eng}$
+\Ensure Path $P_{s\to t}$
+\State Initialize distance array $dist[\cdot]\gets \infty$, predecessor $pred[\cdot]$, visited set $Q$
+\State $dist[s]\gets 0$
+\While{$Q$ not empty}
+  \State Extract $u = \arg\min_{v \in Q} dist[v]$; remove $u$ from $Q$
+  \If{$u = t$} \State break \EndIf
+  \For{each neighbor $v$ of $u$}
+    \State Compute base energy $E_{uv} = E_{elec}k + \varepsilon_{amp}k d(u,v)^2$
+    \State $coolPenalty = \lambda_{cool} \cdot \mathbb{1}[C_u>0]$
+    \State $engPenalty = \lambda_{eng} \cdot \frac{E_{\max}-RE_u}{E_{\max}}$
+    \State $w = E_{uv} + coolPenalty + engPenalty$
+    \If{$dist[u] + w < dist[v]$}
+      \State $dist[v] \gets dist[u] + w$; $pred[v] \gets u$
+    \EndIf
+  \EndFor
+\EndWhile
+\State Reconstruct $P_{s\to t}$ via $pred$ pointers
+\State \Return $P_{s\to t}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[ht]
+\caption{Redundancy-Driven Sleep--Wake Scheduling}\label{alg:sleep-wake}
+\begin{algorithmic}[1]
+\Require Node set $V$, unique coverage threshold $\tau$, max sleep fraction $f_{max}$
+\Ensure Updated sleep states
+\For{each node $i \in V$}
+  \State Compute unique coverage $U_i$
+\EndFor
+\State $S \gets$ nodes with $U_i < \tau$ and not CH
+\State Sort $S$ ascending by $U_i$ (more redundant first)
+\State Select prefix $S'$ such that $|S'|/|V| \le f_{max}$
+\For{each $i \in S'$}
+  \State Assign sleep duration proportional to energy deficit and redundancy
+\EndFor
+\For{each remaining node $j$ moderately redundant}
+  \State Contract radius $S_j$ with adaptive safeguard
+\EndFor
+\end{algorithmic}
+\end{algorithm}

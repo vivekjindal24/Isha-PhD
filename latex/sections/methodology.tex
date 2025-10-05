@@ -1,0 +1,23 @@
+% Methodology
+\section{Methodology}
+We consider $N=200$ static nodes across a $500\,\text{m} \times 500\,\text{m}$ field with heterogeneous energy tiers (160 normal, 40 advanced). Nodes are mapped to five logical regions; each round executes: (i) cooling and neighbor updates, (ii) regional CH selection, (iii) routing, (iv) redundancy-aware sleep--wake optimization, (v) sensor sampling and actuator policy enforcement, then (vi) metric aggregation.
+
+\subsection{Cluster Head Selection}
+For candidate node $i$ with residual energy $RE_i$, distance $D_i$ to the base station (BS), neighbor count $|\mathcal{N}_i|$, and cooling remainder $C_i$, the cost is:
+\begin{equation}
+\mathrm{Cost}_{CH}(i) = \alpha \frac{D_i}{D_{\max}} + \beta \frac{E_{\max} - RE_i}{E_{\max}} + \gamma \frac{1}{1+|\mathcal{N}_i|} + \delta \frac{C_i}{\text{MinRest}},
+\end{equation}
+with $(\alpha,\beta,\gamma,\delta)=(0.4,0.3,0.2,0.1)$. Nodes with $C_i > 0.5\,\text{MinRest}$ are excluded. Advanced nodes gain a modest multiplicative bonus for higher energy headroom.
+
+\subsection{Cooling-Aware Routing}
+A Dijkstra-style path search assigns penalty to edges originating at nodes with $C_i>0$, summing transmission energy $E_{tx}=E_{elec} k + \varepsilon_{amp} k d^2$, distance, energy headroom penalty, and cooling surcharge. Direct CH--BS links are taken when within radio budget; otherwise inter-CH relay or member multi-hop paths are constructed.
+
+\subsection{Redundancy-Driven Sleep--Wake Optimization}
+Unique coverage $U_i$ is the fraction of a node's sensing disc not overlapped by neighbors. Nodes with low $U_i$ and non-CH status enter a ranked list for sleep (cap $\approx 20\%$ concurrently), while moderately redundant nodes apply controlled sensing-radius contraction instead of full dormancy. Sleep duration (5--20 time units) scales with energy deficit, residual cooling, and neighbor density.
+
+\subsection{Adaptive Radius Control}
+We adjust sensing radius to preserve macro coverage:
+\begin{equation}
+S'_i = S_i - \min_j (S_i + S_j - d_{ij}) + \mathrm{AdaptiveBoost}(i),
+\end{equation}
+mitigating pathological shrinkage while retaining redundancy benefits.

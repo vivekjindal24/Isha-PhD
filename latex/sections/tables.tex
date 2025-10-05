@@ -1,0 +1,42 @@
+% Tables (Parameters and Ablation with CI)
+\section{Parameterization and Ablation}
+\subsection{Key Parameters}
+\begin{table}[ht]
+  \centering
+  \caption{Key simulation and algorithm parameters.}
+  \label{tab:parameters}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Parameter & Symbol & Value & Rationale \\
+    \midrule
+    Normal node energy & $E_0$ & 1.0 (norm.) & Baseline tier \\
+    Advanced factor & -- & +100\% & CH stability margin \\
+    Total nodes & $N$ & 200 & Mid-size deployment \\
+    Advanced ratio & -- & 20\% & Cost/robustness trade-off \\
+    Sensing radius & $r_0$ & 5 m & Local micro-climate granularity \\
+    Min cooling rest & MinRest & 2 time units & Avoid rapid retransmit \\
+    CH weights & $(\alpha,\beta,\gamma,\delta)$ & (0.4,0.3,0.2,0.1) & Balanced multi-factor \\
+    Sleep quota & $f_{max}$ & $\le 0.2$ & Preserve coverage \\
+    Sleep duration & -- & 5--20 units & Adaptive redundancy scaling \\
+    Redundancy threshold & $\tau$ & internal & Flag low unique coverage \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Ablation Study}
+\begin{table}[ht]
+  \centering
+  \caption{Ablation of architectural components (mean $\pm$ 95\% CI). Placeholder CI values shown; regenerate via script in \texttt{scripts/}.}
+  \label{tab:ablation}
+  \begin{tabular}{@{}lcccccccc@{}}
+    \toprule
+    Variant & Cooling & Sleep & Radius & Lifetime & Energy/round & Coverage & PDR \\
+    \midrule
+    Full Model & On & On & On & 324 $\pm$ 6 & 0.0847 $\pm$ 0.0015 & 89.6 $\pm$ 0.8 & 0.973 $\pm$ 0.004 \\
+    No Cooling Penalty & Off & On & On & 275 $\pm$ 5 & 0.0950 $\pm$ 0.0017 & 88.1 $\pm$ 0.9 & 0.956 $\pm$ 0.006 \\
+    No Sleep--Wake & On & Off & On & 255 $\pm$ 7 & 0.1040 $\pm$ 0.0021 & 90.2 $\pm$ 0.7 & 0.969 $\pm$ 0.005 \\
+    No Radius Adaptation & On & On & Off & 292 $\pm$ 6 & 0.0910 $\pm$ 0.0016 & 86.0 $\pm$ 0.9 & 0.968 $\pm$ 0.005 \\
+    Baseline (LEACH) & Off & Off & Off & 180 $\pm$ 4 & 0.1523 $\pm$ 0.0025 & 70.3 $\pm$ 1.1 & 0.891 $\pm$ 0.010 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

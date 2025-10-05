@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# LaTeX
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output files (keep source, ignore generated)
+*.pdf
+*.dvi
+*.ps
+
+# Word documents (keeping source scripts, ignoring generated)
+# SmartFarming_*.docx
+
+# Figures (can uncomment if you want to track generated figures)
+# figures/*.png
+# figures/*.pdf

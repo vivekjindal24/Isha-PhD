@@ -1,0 +1,13 @@
+% Introduction
+\section{Introduction}
+Large-scale smart agriculture demands continuous micro-climatic and soil telemetry under finite energy reserves. Classical clustering protocols (e.g., LEACH, HEED, SEP) neglect explicit modeling of post-transmission cooling intervals, allowing hidden latency and unstable cluster head (CH) rotation patterns to erode longevity. Additionally, unmanaged sensing overlap wastes energy without proportional information gain. We address these inefficiencies through a holistic architecture that simultaneously considers cooling state, residual energy, spatial redundancy, and routing resilience.
+
+\subsection{Contributions}
+Our main contributions are:
+\begin{enumerate}[label=\textbf{C\arabic*}]
+  \item Cooling-aware CH cost model integrating distance, inverted residual energy, neighbor density, and normalized cooling time.
+  \item Modified shortest-path routing excluding or penalizing nodes in active cooling, enhancing effective throughput.
+  \item Redundancy-driven sleep--wake scheduling with adaptive sensing-radius contraction preserving coverage while lowering load.
+  \item Five-region spatial partitioning stabilizing CH turnover and balancing energy expenditure.
+  \item Comprehensive comparative evaluation demonstrating multi-metric superiority over LEACH / HEED / SEP baselines.
+\end{enumerate}
