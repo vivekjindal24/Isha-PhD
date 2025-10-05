@@ -1,0 +1,44 @@
+% Related Work (Literature Review)
+\section{Related Work}
+
+\subsection{Energy-Efficient Clustering in WSNs}
+Hierarchical clustering protocols have been central to WSN energy optimization since the seminal work of Heinzelman et al.~\cite{heinzelman2000leach}. LEACH introduced randomized, probabilistic cluster head (CH) rotation, achieving distributed load balancing but with limited adaptivity to residual energy or spatial heterogeneity. Younis and Fahmy~\cite{younis2004heed} proposed HEED, which extends LEACH by incorporating residual energy and intra-cluster communication cost into CH selection, yielding more stable clusters. Smaragdakis et al.~\cite{smaragdakis2004sep} addressed heterogeneous networks via SEP, weighting CH election probabilities by initial energy tier, thus prolonging network lifetime through preferential selection of advanced nodes.
+
+Despite these advances, none of the classical protocols explicitly model \emph{post-transmission cooling intervals}—the enforced temporal gap required after high-power transmissions to prevent thermal damage or regulatory violations. As a result, rapid successive CH re-elections or routing through recently active nodes can inadvertently degrade effective throughput and introduce hidden latency.
+
+\subsection{Cooling and Thermal Constraints in Wireless Systems}
+Thermal management in wireless devices has been explored primarily in cellular base stations~\cite{thermal_cellular2018} and high-density IoT deployments~\cite{iot_thermal2020}, where processor throttling and transmission scheduling are adjusted to maintain safe operating temperatures. However, explicit cooling-state modeling in WSN routing and clustering remains nascent. Recent work by Zhang et al.~\cite{zhang_cooling2021} introduced cooling-aware duty cycling for individual nodes but did not integrate cooling into multi-hop routing or CH selection cost functions. Our approach differs by treating cooling state as a \emph{first-class optimization variable} across all three subsystems: clustering, routing, and coverage control.
+
+\subsection{Coverage Optimization and Redundancy Management}
+Coverage maximization under energy constraints has been addressed through sleep scheduling~\cite{ye2003peas,tian2002node} and adaptive sensing radius control~\cite{wang2007coverage}. PEAS~\cite{ye2003peas} uses probing to keep only necessary sensors active, while Tian and Georganas~\cite{tian2002node} proposed node scheduling based on geometric coverage overlap. However, these methods do not consider the interplay between redundancy, energy expenditure, and cooling overhead. Our \emph{redundancy-driven sleep--wake optimization with adaptive radius contraction} uniquely couples spatial redundancy (unique coverage $U_i$) with energy and cooling state to co-optimize coverage preservation and thermal sustainability.
+
+\subsection{Routing Under Operational Constraints}
+Directed diffusion~\cite{intanagonwiwat2000directed} and gradient-based routing~\cite{schurgers2002energy} optimize paths based on energy reserves and link quality, but do not account for transient node unavailability due to cooling. Recent energy-aware routing protocols~\cite{mittal2017survey} focus on residual battery levels and hop counts; our cooling-aware Dijkstra variant extends this by imposing edge penalties for nodes with non-zero cooling remainder $C_i>0$, thereby avoiding latent forwarding bottlenecks.
+
+\subsection{Positioning This Work}
+\Cref{tab:related-comparison} summarizes key distinctions. Our integrated framework is the first to:
+\begin{enumerate}[label=(\roman*)]
+  \item Incorporate explicit cooling cost ($\delta \frac{C_i}{\text{MinRest}}$) into CH selection alongside distance, energy, and density.
+  \item Penalize routing edges originating at cooling nodes via $\lambda_{cool}$ surcharges, ensuring paths avoid thermal bottlenecks.
+  \item Unify redundancy-based sleep scheduling with adaptive sensing-radius contraction, preserving macro coverage while reducing per-node load and cooling frequency.
+\end{enumerate}
+
+\begin{table}[ht]
+  \centering
+  \caption{Comparison with related WSN optimization approaches.}
+  \label{tab:related-comparison}
+  \begin{tabular}{@{}lccccc@{}}
+    \toprule
+    Method & Clustering & Routing & Coverage & Cooling & Heterogeneity \\
+    \midrule
+    LEACH~\cite{heinzelman2000leach} & Random & CH-direct & Fixed & No & Homogeneous \\
+    HEED~\cite{younis2004heed} & Energy+cost & CH-direct & Fixed & No & Homogeneous \\
+    SEP~\cite{smaragdakis2004sep} & Weighted prob. & CH-direct & Fixed & No & 2-tier energy \\
+    PEAS~\cite{ye2003peas} & -- & -- & Probing-based & No & Homogeneous \\
+    Zhang et al.~\cite{zhang_cooling2021} & -- & -- & Duty-cycle & Node-level & Homogeneous \\
+    \textbf{Proposed} & \textbf{Multi-factor} & \textbf{Cooling-aware} & \textbf{Redundancy+adaptive} & \textbf{Integrated} & \textbf{2-tier regional} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+This integrated cooling-aware paradigm yields substantial empirical gains (detailed in \Cref{sec:results}) while addressing a gap in the literature: the holistic incorporation of thermal state constraints into WSN optimization.

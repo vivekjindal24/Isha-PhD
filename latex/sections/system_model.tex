@@ -1,0 +1,75 @@
+% System Model
+\section{System Model}
+\label{sec:system-model}
+
+\subsection{Network Architecture}
+We consider a static heterogeneous WSN comprising $N=200$ nodes deployed uniformly over a square field of dimensions $L \times L$ ($L=500$ m). Nodes are partitioned into two energy tiers:
+\begin{itemize}[noitemsep]
+  \item \textbf{Normal nodes} ($N_n = 160$, 80\%): initial energy $E_0 = 1.0$ J (normalized).
+  \item \textbf{Advanced nodes} ($N_a = 40$, 20\%): initial energy $E_a = \alpha E_0$, with $\alpha=2$ (100\% surplus).
+\end{itemize}
+A stationary base station (BS) is located at coordinates $(L/2, L + 50)$ m, outside the deployment area to reflect realistic sink placement. Nodes are pre-assigned to five non-overlapping regions $\{R_1, \ldots, R_5\}$ via spatial partitioning (e.g., vertical strips or k-means clustering) to stabilize CH turnover and balance energy consumption across the field.
+
+\subsection{Energy Model}
+We adopt the standard first-order radio model~\cite{heinzelman2000leach}. Transmitting a $k$-bit packet over distance $d$ consumes:
+\begin{equation}
+E_{tx}(k,d) = E_{elec} \cdot k + \varepsilon_{amp} \cdot k \cdot d^\gamma,
+\label{eq:etx}
+\end{equation}
+where $E_{elec}=50$ nJ/bit is the transceiver electronics energy, $\varepsilon_{amp}=100$ pJ/(bit$\cdot$m$^\gamma$) is the amplifier coefficient, and $\gamma=2$ (free-space path loss) for $d < d_0$ or $\gamma=4$ (multi-path fading) for $d \ge d_0$, with crossover distance $d_0 = \sqrt{\varepsilon_{fs}/\varepsilon_{mp}} \approx 87$ m. For simplicity, we use $\gamma=2$ throughout (all intra-field distances $<d_0$). Receiving $k$ bits costs:
+\begin{equation}
+E_{rx}(k) = E_{elec} \cdot k.
+\end{equation}
+Data aggregation at the CH incurs a fixed per-message cost $E_{DA}=5$ nJ/bit. Sensing energy per sample is $E_{sense}=0.01$ J (modest environmental sensor assumption).
+
+\subsection{Sensing and Coverage Model}
+Each node $i$ has an adjustable sensing radius $S_i(t)$ initialized to $S_0=5$ m, covering area $A_i = \pi S_i^2$. A point $p$ is \emph{covered} by node $i$ if $\|p - i\| \le S_i$. Network coverage $C(t)$ is the fraction of the field area sensed by at least one active node:
+\begin{equation}
+C(t) = \frac{|\{p \in \mathcal{F} : \exists i \in \mathcal{A}(t), \|p-i\| \le S_i(t)\}|}{|\mathcal{F}|},
+\end{equation}
+where $\mathcal{F}$ is the field and $\mathcal{A}(t)$ is the set of active (awake, non-cooling-blocked) nodes at round $t$.
+
+The \textbf{unique coverage} of node $i$, denoted $U_i(t)$, quantifies the fraction of its sensing disc \emph{not} overlapped by neighbors:
+\begin{equation}
+U_i(t) = \frac{A_i - \sum_{j \in \mathcal{N}_i} \text{overlap}(A_i, A_j)}{A_i},
+\label{eq:unique-coverage}
+\end{equation}
+where $\mathcal{N}_i$ is the set of nodes within communication range of $i$, and $\text{overlap}(A_i,A_j)$ is the intersection area of discs $i$ and $j$, computed via standard circle-intersection geometry~\cite{weisstein_circle}. Nodes with $U_i < \tau$ (low unique coverage) are candidates for sleep scheduling.
+
+\subsection{Cooling State Model}
+\label{subsec:cooling-model}
+Each node $i$ maintains a \textbf{cooling remainder} $C_i(t) \in [0, \text{MinRest}]$ representing residual mandatory idle time after a transmission. Upon transmitting data (as CH or relay), $C_i$ is set to $\text{MinRest}=2$ time units. In each subsequent round, $C_i$ decrements by 1 until reaching zero:
+\begin{equation}
+C_i(t+1) = \max(0, C_i(t) - 1).
+\label{eq:cooling-decrement}
+\end{equation}
+A node with $C_i(t) > 0$ is in \emph{active cooling} and incurs penalties:
+\begin{itemize}[noitemsep]
+  \item \textbf{CH candidacy}: Nodes with $C_i > 0.5 \cdot \text{MinRest}$ (i.e., $C_i \ge 1$ for MinRest=2) are excluded from CH election to avoid immediate re-transmission stress.
+  \item \textbf{Routing penalty}: Edges originating at $i$ receive a cooling surcharge (detailed in \Cref{subsec:routing}).
+\end{itemize}
+
+\textbf{Physical Rationale}: MinRest models thermal dissipation time for compact sensor nodes with limited heat-sinking. For instance, a node transmitting at +10 dBm for 100 ms may experience a temperature rise of 5--10$^\circ$C; enforcing a 2-round gap (each round $\approx 5$--10 s in typical agricultural WSN cycles) allows passive cooling below thermal thresholds before the next high-power event. This parameter can be calibrated via empirical thermal profiling of the deployed hardware.
+
+\subsection{Network Operation Cycle}
+Each round $t$ consists of the following phases:
+\begin{enumerate}[label=\textbf{Phase \arabic*:},noitemsep]
+  \item \textbf{Cooling Update}: Decrement $C_i$ for all nodes (\Cref{eq:cooling-decrement}).
+  \item \textbf{Neighbor Discovery}: Nodes exchange beacons (position, $RE_i$, $C_i$, $S_i$) within radio range $R_{comm}=50$ m.
+  \item \textbf{Regional CH Selection}: For each region $R_k$, elect CH(s) via cooling-aware cost minimization (\Cref{alg:ch-selection}).
+  \item \textbf{Routing Construction}: Compute cooling-aware paths from CHs to BS (\Cref{alg:routing}).
+  \item \textbf{Redundancy-Driven Sleep--Wake Optimization}: Compute $U_i$ and assign sleep states (\Cref{alg:sleep-wake}).
+  \item \textbf{Data Collection \& Aggregation}: Active members sense and transmit to CH; CHs aggregate and forward to BS.
+  \item \textbf{Metric Logging}: Record energy, coverage, PDR, cooling violations.
+\end{enumerate}
+
+\subsection{Performance Metrics}
+\begin{itemize}[noitemsep]
+  \item \textbf{Network Lifetime}: Rounds until first node exhaustion (battery $\le 0$).
+  \item \textbf{Energy Efficiency}: Ratio of total data delivered to total energy consumed.
+  \item \textbf{Coverage}: Percentage of field area sensed by active nodes.
+  \item \textbf{Packet Delivery Ratio (PDR)}: Fraction of generated packets successfully received at BS.
+  \item \textbf{End-to-End Delay}: Average latency from member sensing to BS reception.
+  \item \textbf{Cluster Stability}: Fraction of rounds where CH set remains unchanged.
+  \item \textbf{Cooling Overhead}: Percentage of nodes in cooling state per round.
+\end{itemize}

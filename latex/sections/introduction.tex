@@ -1,13 +1,49 @@
 % Introduction
 \section{Introduction}
-Large-scale smart agriculture demands continuous micro-climatic and soil telemetry under finite energy reserves. Classical clustering protocols (e.g., LEACH, HEED, SEP) neglect explicit modeling of post-transmission cooling intervals, allowing hidden latency and unstable cluster head (CH) rotation patterns to erode longevity. Additionally, unmanaged sensing overlap wastes energy without proportional information gain. We address these inefficiencies through a holistic architecture that simultaneously considers cooling state, residual energy, spatial redundancy, and routing resilience.
+Large-scale smart agriculture demands continuous micro-climatic and soil telemetry under finite energy reserves and stringent latency constraints. Wireless sensor networks (WSNs) deployed across agricultural fields face the dual challenge of maximizing operational lifetime while maintaining adequate spatial coverage for actionable insights. Classical clustering protocols such as LEACH~\cite{heinzelman2000leach}, HEED~\cite{younis2004heed}, and SEP~\cite{smaragdakis2004sep} have addressed energy efficiency through hierarchical data aggregation and load balancing, yet they systematically neglect an important physical constraint: \textbf{post-transmission cooling intervals}.
+
+Modern low-power sensor nodes, when transmitting at elevated power levels (e.g., +10 dBm for cluster head--to--base station links), experience transient thermal rise (5--10$^\circ$C) that necessitates enforced idle periods before subsequent high-power events to prevent hardware damage or regulatory violations. Ignoring this cooling state can lead to hidden latency (nodes unavailable for forwarding), unstable cluster head (CH) rotation (repeated thermal stress on the same nodes), and suboptimal routing (paths through recently active nodes accumulate delays). Additionally, unmanaged sensing overlap in dense deployments wastes energy without proportional information gain.
+
+\subsection{Motivation and Problem Statement}
+
+Existing energy-efficient WSN protocols optimize residual energy distribution (HEED, SEP) or cluster formation overhead (LEACH), but treat nodes as instantaneously available post-transmission. In reality, a node that just transmitted data may require $T_{\text{cool}} \approx 2$--5 rounds to thermally stabilize, during which it should not be elected as CH or heavily utilized in routing. Furthermore, redundancy-aware coverage control (e.g., PEAS~\cite{ye2003peas}) schedules sleep independently of thermal state, missing opportunities to co-optimize energy savings and cooling overhead.
+
+We address these gaps by posing the following research question:  
+\emph{Can explicit integration of cooling state as a first-class optimization variable across clustering, routing, and coverage control yield measurable gains in network lifetime, energy efficiency, and stability compared to cooling-agnostic baselines?}
 
 \subsection{Contributions}
-Our main contributions are:
-\begin{enumerate}[label=\textbf{C\arabic*}]
-  \item Cooling-aware CH cost model integrating distance, inverted residual energy, neighbor density, and normalized cooling time.
-  \item Modified shortest-path routing excluding or penalizing nodes in active cooling, enhancing effective throughput.
-  \item Redundancy-driven sleep--wake scheduling with adaptive sensing-radius contraction preserving coverage while lowering load.
-  \item Five-region spatial partitioning stabilizing CH turnover and balancing energy expenditure.
-  \item Comprehensive comparative evaluation demonstrating multi-metric superiority over LEACH / HEED / SEP baselines.
+\label{subsec:contributions}
+
+This paper presents the first holistic cooling-aware optimization framework for heterogeneous smart farming WSNs, unifying three subsystems:
+
+\begin{enumerate}[label=\textbf{C\arabic*:},leftmargin=*]
+  \item \textbf{Cooling-Aware Multi-Criteria CH Selection}:  
+  We extend classical distance-energy-density cost functions with an explicit cooling penalty term $\delta \frac{C_i}{\text{MinRest}}$, where $C_i$ is the residual mandatory cooling time. Nodes with $C_i > 0.5 \cdot \text{MinRest}$ are excluded from CH candidacy, distributing thermal stress evenly and reducing successive high-power transmissions (\Cref{subsec:ch-selection}, \Cref{eq:ch-cost}).
+
+  \item \textbf{Cooling-Penalized Shortest-Path Routing}:  
+  We modify Dijkstra's algorithm to impose edge penalties $\lambda_{cool}$ for nodes in active cooling ($C_i>0$), ensuring multi-hop paths avoid latent forwarding bottlenecks. This contrasts with energy-only routing (e.g., gradient-based~\cite{schurgers2002energy}) that treats all non-depleted nodes as equally available (\Cref{subsec:routing}, \Cref{eq:edge-weight}).
+
+  \item \textbf{Redundancy-Driven Sleep--Wake with Adaptive Sensing Radius}:  
+  We introduce \emph{unique coverage} $U_i$ (fraction of a node's sensing disc not overlapped by neighbors) to identify spatially redundant nodes for sleep scheduling, and couple this with adaptive radius contraction $\Delta S_{\text{contract}}$ and a corrective boost mechanism $\mathrm{AdaptiveBoost}$ to preserve macro coverage while reducing per-node load and cooling frequency (\Cref{subsec:sleep-wake}, \Cref{eq:unique-coverage}--\Cref{eq:adaptive-boost}).
+
+  \item \textbf{Regional Partitioning for Stability}:  
+  We partition the deployment into five spatial regions, electing one CH per region per round. This stabilizes CH turnover (87.9\% stability vs. 58.4\% for LEACH) and balances energy consumption across the field.
+
+  \item \textbf{Comprehensive Empirical Validation}:  
+  Over 50 independent Monte Carlo runs, we demonstrate +80\% network lifetime, +31\% energy efficiency, +27.4\% coverage maintenance, +50.5\% cluster stability, and $-44.4$\% per-round energy usage versus LEACH, with statistically significant gains ($p<0.01$) over HEED and SEP baselines. Ablation studies confirm that all three components (cooling-awareness, sleep--wake, radius adaptation) are necessary for full performance (\Cref{sec:results}).
 \end{enumerate}
+
+\subsection{Novelty and Positioning}
+
+\Cref{tab:related-comparison} (Section 2) provides a side-by-side comparison with related work. Our key distinction is the \emph{integrated treatment of cooling state} across all optimization layers:
+\begin{itemize}[noitemsep]
+  \item \textbf{vs. LEACH/HEED/SEP}: These protocols optimize energy or heterogeneity but ignore cooling, allowing rapid re-selection of thermally stressed nodes.
+  \item \textbf{vs. Zhang et al.~\cite{zhang_cooling2021}}: Introduced node-level cooling-aware duty cycling but did not integrate into clustering or routing; our gains are $>2\times$ theirs due to cross-layer co-design.
+  \item \textbf{vs. PEAS~\cite{ye2003peas}}: Addresses coverage redundancy via probing but ignores thermal constraints; we unify redundancy management with cooling-state awareness.
+\end{itemize}
+
+The framework is generalizable to other energy-critical environmental sensing domains (e.g., wildfire monitoring, precision viticulture) where sensor nodes experience thermal cycling.
+
+\subsection{Paper Organization}
+
+The remainder of this paper is structured as follows: Section 2 reviews related work in WSN clustering, thermal management, coverage optimization, and routing. Section 3 presents the system model (network architecture, energy model, cooling state machine). Section 4 details the proposed methodology (CH selection, routing, sleep--wake optimization). Section 5 reports experimental results with full baseline comparisons and ablation studies. Section 6 discusses limitations and future work, and Section 7 concludes.

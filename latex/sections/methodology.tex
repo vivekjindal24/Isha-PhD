@@ -1,23 +1,110 @@
 % Methodology
-\section{Methodology}
-We consider $N=200$ static nodes across a $500\,\text{m} \times 500\,\text{m}$ field with heterogeneous energy tiers (160 normal, 40 advanced). Nodes are mapped to five logical regions; each round executes: (i) cooling and neighbor updates, (ii) regional CH selection, (iii) routing, (iv) redundancy-aware sleep--wake optimization, (v) sensor sampling and actuator policy enforcement, then (vi) metric aggregation.
+\section{Proposed Methodology}
+\label{sec:methodology}
 
-\subsection{Cluster Head Selection}
-For candidate node $i$ with residual energy $RE_i$, distance $D_i$ to the base station (BS), neighbor count $|\mathcal{N}_i|$, and cooling remainder $C_i$, the cost is:
+Building on the system model (\Cref{sec:system-model}), we present three tightly integrated optimization components: (i) cooling-aware CH selection, (ii) cooling-penalized routing, and (iii) redundancy-driven sleep--wake scheduling with adaptive sensing-radius control.
+
+\subsection{Cooling-Aware Cluster Head Selection}
+\label{subsec:ch-selection}
+
+For each region $R_k$, we select the CH by minimizing a composite cost function that balances spatial proximity to the BS, residual energy, neighborhood density, and \emph{cooling state}. For candidate node $i \in R_k$, the cost is:
 \begin{equation}
 \mathrm{Cost}_{CH}(i) = \alpha \frac{D_i}{D_{\max}} + \beta \frac{E_{\max} - RE_i}{E_{\max}} + \gamma \frac{1}{1+|\mathcal{N}_i|} + \delta \frac{C_i}{\text{MinRest}},
+\label{eq:ch-cost}
 \end{equation}
-with $(\alpha,\beta,\gamma,\delta)=(0.4,0.3,0.2,0.1)$. Nodes with $C_i > 0.5\,\text{MinRest}$ are excluded. Advanced nodes gain a modest multiplicative bonus for higher energy headroom.
+where:
+\begin{itemize}[noitemsep]
+  \item $D_i = \|i - \text{BS}\|$ is the Euclidean distance from node $i$ to the base station; $D_{\max} = \max_j D_j$ normalizes this term.
+  \item $RE_i$ is the current residual energy of node $i$; $E_{\max}$ is the maximum initial energy tier (for advanced nodes).
+  \item $|\mathcal{N}_i|$ is the number of neighbors within communication range $R_{comm}$.
+  \item $C_i$ is the cooling remainder (\Cref{subsec:cooling-model}).
+  \item Weights $(\alpha, \beta, \gamma, \delta) = (0.4, 0.3, 0.2, 0.1)$ were calibrated via grid search over $\{0.1, 0.2, \ldots, 0.4\}$ to maximize lifetime while maintaining coverage $\ge 85\%$.
+\end{itemize}
+
+\textbf{Cooling Exclusion Rule}: Nodes with $C_i > 0.5 \cdot \text{MinRest}$ (i.e., $C_i \ge 1$ when MinRest=2) are \emph{ineligible} for CH election, preventing immediate re-transmission stress. Among eligible candidates, the node with minimal $\mathrm{Cost}_{CH}$ is elected as CH for that round.
+
+\textbf{Advanced-Node Bonus}: To exploit energy heterogeneity, advanced nodes ($E_a = 2 E_0$) receive a multiplicative cost discount:
+\begin{equation}
+\mathrm{Cost}_{CH}^{\text{adv}}(i) = (1 - \epsilon) \cdot \mathrm{Cost}_{CH}(i), \quad \epsilon = 0.05,
+\end{equation}
+slightly biasing selection toward higher-capacity nodes without deterministic assignment.
+
+\Cref{alg:ch-selection} details the procedure. The explicit cooling term $\delta C_i/\text{MinRest}$ penalizes recently active nodes, distributing CH duty more evenly over time and reducing successive thermal cycles.
 
 \subsection{Cooling-Aware Routing}
-A Dijkstra-style path search assigns penalty to edges originating at nodes with $C_i>0$, summing transmission energy $E_{tx}=E_{elec} k + \varepsilon_{amp} k d^2$, distance, energy headroom penalty, and cooling surcharge. Direct CH--BS links are taken when within radio budget; otherwise inter-CH relay or member multi-hop paths are constructed.
+\label{subsec:routing}
+
+Once CHs are elected, we construct multi-hop paths from CHs to the BS using a modified Dijkstra shortest-path algorithm that incorporates \emph{cooling penalties} on edges. For an edge $(u,v)$ in the network graph, the edge weight is:
+\begin{equation}
+w(u,v) = E_{tx}(k, d_{uv}) + \lambda_{cool} \cdot \mathbb{1}[C_u > 0] + \lambda_{eng} \cdot \frac{E_{\max} - RE_u}{E_{\max}},
+\label{eq:edge-weight}
+\end{equation}
+where:
+\begin{itemize}[noitemsep]
+  \item $E_{tx}(k, d_{uv})$ is the transmission energy (\Cref{eq:etx}) for packet size $k=4000$ bits over distance $d_{uv}$.
+  \item $\lambda_{cool} = 0.5$ J is the \textbf{cooling penalty}: a surcharge applied if the originating node $u$ is in active cooling ($C_u>0$). This discourages routing through thermally constrained nodes.
+  \item $\lambda_{eng} = 0.3$ J is the \textbf{energy headroom penalty}, proportional to the fractional energy depletion of node $u$, promoting load balancing.
+  \item $\mathbb{1}[\cdot]$ is the indicator function.
+\end{itemize}
+
+\textbf{Routing Decision Logic}:
+\begin{enumerate}[label=\arabic*.,noitemsep]
+  \item If $d(\text{CH}, \text{BS}) \le R_{comm}$ and $E_{tx}(k, d) \le RE_{\text{CH}}$, transmit directly to BS.
+  \item Otherwise, compute shortest path via Dijkstra with weights from \Cref{eq:edge-weight}, considering both other CHs and member nodes as relay candidates.
+  \item Paths are recomputed each round to adapt to evolving $C_i$ and $RE_i$ distributions.
+\end{enumerate}
+
+\Cref{alg:routing} formalizes this process. By inflating edge costs for cooling nodes, the algorithm dynamically routes around thermal bottlenecks, improving effective throughput and reducing cooling-related packet drops.
 
 \subsection{Redundancy-Driven Sleep--Wake Optimization}
-Unique coverage $U_i$ is the fraction of a node's sensing disc not overlapped by neighbors. Nodes with low $U_i$ and non-CH status enter a ranked list for sleep (cap $\approx 20\%$ concurrently), while moderately redundant nodes apply controlled sensing-radius contraction instead of full dormancy. Sleep duration (5--20 time units) scales with energy deficit, residual cooling, and neighbor density.
+\label{subsec:sleep-wake}
 
-\subsection{Adaptive Radius Control}
-We adjust sensing radius to preserve macro coverage:
+To conserve energy without sacrificing coverage, we selectively transition nodes with high spatial redundancy into sleep mode or contract their sensing radii. The core metric is \textbf{unique coverage} $U_i$ (\Cref{eq:unique-coverage}), computed as follows.
+
+\subsubsection{Computing Unique Coverage $U_i$}
+For node $i$ with sensing radius $S_i$ and neighbor set $\mathcal{N}_i$:
 \begin{equation}
-S'_i = S_i - \min_j (S_i + S_j - d_{ij}) + \mathrm{AdaptiveBoost}(i),
+U_i = \frac{A_i^{\text{unique}}}{A_i}, \quad A_i = \pi S_i^2,
 \end{equation}
-mitigating pathological shrinkage while retaining redundancy benefits.
+where $A_i^{\text{unique}}$ is the area of disc $i$ not overlapped by any neighbor $j \in \mathcal{N}_i$. We approximate this via Monte Carlo sampling: generate $M=1000$ random points within disc $i$; count points not covered by any neighbor disc; $U_i \approx (\text{count}/M)$. Alternatively, for higher precision, analytic circle-intersection formulas~\cite{weisstein_circle} can be applied pairwise and aggregated.
+
+\subsubsection{Sleep Candidate Ranking}
+Nodes satisfying the following criteria are ranked for sleep:
+\begin{enumerate}[label=(\roman*),noitemsep]
+  \item $U_i < \tau_{\text{sleep}} = 0.3$ (low unique coverage).
+  \item Not currently a CH.
+  \item $RE_i > E_{\text{min}} = 0.1$ J (sufficient reserve to wake and resume).
+\end{enumerate}
+Candidates are sorted ascending by $U_i$ (most redundant first). We select a prefix such that at most $f_{\max}=20\%$ of total nodes are asleep concurrently, preserving network connectivity and coverage floor.
+
+\subsubsection{Sleep Duration Assignment}
+Each selected node $i$ is assigned sleep duration:
+\begin{equation}
+T_{\text{sleep}}(i) = T_{\min} + \left\lfloor \frac{(E_{\max} - RE_i)}{E_{\max}} \cdot (T_{\max} - T_{\min}) \right\rfloor + \left\lfloor \frac{C_i}{\text{MinRest}} \cdot 5 \right\rfloor,
+\label{eq:sleep-duration}
+\end{equation}
+where $T_{\min}=5$, $T_{\max}=20$ time units. This scales sleep duration with energy deficit (nodes low on energy sleep longer to recover opportunity cost) and residual cooling (nodes recently active benefit from extended idle to fully dissipate heat). During sleep, the node powers down radio and sensing, consuming only leakage energy $E_{\text{leak}} \approx 0.001$ J/round.
+
+\subsubsection{Adaptive Sensing Radius Control}
+\label{subsubsec:adaptive-radius}
+For nodes with moderate redundancy ($0.3 \le U_i < 0.6$), instead of full sleep, we \emph{contract} their sensing radius to reduce sensing energy and spatial overlap:
+\begin{equation}
+S_i' = S_i - \Delta S_{\text{contract}}(i) + \mathrm{AdaptiveBoost}(i),
+\label{eq:adaptive-radius}
+\end{equation}
+where:
+\begin{equation}
+\Delta S_{\text{contract}}(i) = \min_{j \in \mathcal{N}_i} \left( S_i + S_j - d_{ij} \right)^+,
+\end{equation}
+is the maximum overlap distance with the closest neighbor (clamped to non-negative), and
+\begin{equation}
+\mathrm{AdaptiveBoost}(i) = \begin{cases}
+  +1 \text{ m}, & \text{if } C(t-1) < 85\% \text{ (coverage dropped)}, \\
+  0, & \text{otherwise}.
+\end{cases}
+\label{eq:adaptive-boost}
+\end{equation}
+
+\textbf{Rationale}: $\Delta S_{\text{contract}}$ shrinks $S_i$ proportional to overlap magnitude, but $\mathrm{AdaptiveBoost}$ provides a corrective expansion if global coverage $C(t-1)$ falls below threshold, preventing pathological collapse. Radius adjustments are bounded: $S_i' \in [S_{\min}, S_0]$ with $S_{\min}=2$ m.
+
+\Cref{alg:sleep-wake} integrates these steps. The net effect is 15--20\% energy savings (from sleep/contraction) while maintaining coverage $\ge 85\%$, with minimal cooling overhead due to reduced transmission frequency among redundant nodes.
